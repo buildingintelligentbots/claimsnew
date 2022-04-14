@@ -1,111 +1,59 @@
 pipeline {
 	    agent any
-	
-
-	        // Environment Variables
-	        environment {
-	        MAJOR = '1'
-	        MINOR = '0'
-	        //Orchestrator Services
-	        UIPATH_ORCH_URL = "https://cloud.uipath.com/applebots/Finance/orchestrator_/"
-	        UIPATH_ORCH_LOGICAL_NAME = "applebots"
-	        UIPATH_ORCH_TENANT_NAME = "Finance"
-	        UIPATH_ORCH_FOLDER_NAME = "Shared"
+	    environment {
+	        ORCHESTRATOR_URL = "https://cloud.uipath.com/applebots/Finance/orchestrator_/"
+	        ORCHESTRATOR_LOGICAL_NAME = "applebots"
+	        ORCHESTRATOR_TENANT_NAME = "Finance"
+	        ORCHESTRATOR_FOLDER_NAME = "Shared"
 	    }
-	
-
 	    stages {
-	
-
-	        // Printing Basic Information
-	        stage('Preparing'){
-	            steps {
-	                echo "Jenkins Home ${env.JENKINS_HOME}"
-	                echo "Jenkins URL ${env.JENKINS_URL}"
-	                echo "Jenkins JOB Number ${env.BUILD_NUMBER}"
-	                echo "Jenkins JOB Name ${env.JOB_NAME}"
-	                echo "GitHub BranhName ${env.BRANCH_NAME}"
-	                checkout scm
-	
-
-	            }
-	        }
-	
-
-	         // Build Stages
+		 
+	         // Building the package
 	        stage('Build') {
 	            steps {
-	                echo "Building..with ${WORKSPACE}"
+	            echo "Building..with ${WORKSPACE}"
 	                UiPathPack (
-	                      outputPath: "Output\\${env.BUILD_NUMBER}",
+	                      traceLevel: 'None',
+			      outputPath: "Output\\${env.BUILD_NUMBER}",
 	                      projectJsonPath: "project.json",
-	                      version: [$class: 'ManualVersionEntry', version: "${MAJOR}.${MINOR}.${env.BUILD_NUMBER}"],
-	                      useOrchestrator: false,
-						  traceLevel: 'None'
+	                    //  version: [$class: 'ManualVersionEntry', version: "${MAJOR}.${MINOR}.${env.BUILD_NUMBER}"],
+			      version: CurrentVersion()
+	                      useOrchestrator: false
+						  
 	        )
 	            }
 	        }
-	         // Test Stages
-	        stage('Test') {
-	            steps {
-	                echo 'Testing..the workflow...'
-	            }
-	        }
-	
+	         
 
-	         // Deploy Stages
-	        stage('Deploy to UAT') {
+	         // Deploying
+	        stage('Deploy to Orchestrator') {
 	            steps {
-	                echo "Deploying ${BRANCH_NAME} to UAT "
+	                echo "Deploying ${BRANCH_NAME} to Orchestrator "
 	                UiPathDeploy (
 	                packagePath: "Output\\${env.BUILD_NUMBER}",
-	                orchestratorAddress: "${UIPATH_ORCH_URL}",
-	                orchestratorTenant: "${UIPATH_ORCH_TENANT_NAME}",
-	                folderName: "${UIPATH_ORCH_FOLDER_NAME}",
-	                environments: '',
-	                //credentials: [$class: 'UserPassAuthenticationEntry', credentialsId: 'APIUserKey']
-	                credentials: Token(accountName: "${UIPATH_ORCH_LOGICAL_NAME}", credentialsId: 'APIUserKey'), 
-					traceLevel: 'None',
-					entryPointPaths: 'Main.xaml'
+	                orchestratorAddress: "${ORCHESTRATOR_URL}",
+	                orchestratorTenant: "${ORCHESTRATOR_TENANT_NAME}",
+	                folderName: "${ORCHESTRATOR_FOLDER_NAME}",
+	               environments: '',
+	                credentials: Token(accountName: "${ORCHESTRATOR_LOGICAL_NAME}", credentialsId: 'APIUserKey'), 
+			traceLevel: 'None',
+			entryPointPaths: 'Main.xaml'
 	
-
 	        )
 	            }
 	        }
-	
-
-	
-
-	         // Deploy to Production Step
-	        stage('Deploy to Production') {
-	            steps {
-	                echo 'Deploy to Production'
-	                }
-	            }
 	    }
 	
-
-	    // Options
-	    options {
-	        // Timeout for pipeline
-	        timeout(time:80, unit:'MINUTES')
-	        skipDefaultCheckout()
-	    }
-	
-
-	
-
-	    // 
+	    
 	    post {
 	        success {
-	            echo 'Deployment has been completed!'
+	            echo 'Orchestrator Deployment is sucessfully completed!'
 	        }
 	        failure {
-	          echo "FAILED: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.JOB_DISPLAY_URL})"
+	          echo "Deployment Failed : Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.JOB_DISPLAY_URL})"
 	        }
 	        always {
-	            /* Clean workspace if success */
-	            cleanWs()
+	                cleanWs()
 	        }
 	    }
 	
